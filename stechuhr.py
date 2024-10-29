@@ -8,16 +8,15 @@ import re
 import yaml
 
 class time_log():
-    head_rows = {'de': ['KW', 'Datum', 'Start Zeit', 'End Zeit'], 'en': ['CW', 'Date', 'Start Time', 'End Time']}
-    languages = ['en', 'de']
     csv_file = []
-    def __init__(self, parent, file_name='time_log.csv', delimiter=',', language='en', date_format='%Y.%m.%d', time_format='%H:%M:%S'):
+    def __init__(self, parent, file_name='time_log.csv', delimiter=',', date_format='%Y.%m.%d', time_format='%H:%M:%S', custom_columns=None, custom_headers=None):
         self.parent = parent
         self.csv_file_name = file_name
         self.csv_delimiter = delimiter
-        self.language = language
         self.save_date_format = date_format
         self.save_time_format = time_format
+        self.custom_columns = custom_columns if custom_columns else []
+        self.custom_headers = custom_headers if custom_headers else []
         self.start_time = datetime.now()
         self.read_csv_file()
     
@@ -54,13 +53,6 @@ class time_log():
                         file.close()
                         return self.correct_formats() # check for the other formats
                     else: # check if the first row is a header row
-                        for language in self.languages:
-                            head_row_start = re.escape(self.head_rows[language][0])
-                            if re.match(r'^' + head_row_start + '[' + ''.join(self.delimiters) + ']', first_row[0]): # starts with header row start followed by a delimiter
-                                with open(self.csv_file_name, mode='r', newline='') as file:
-                                    self.csv_file = list(csv.reader(file, delimiter = re.search(r'^' + head_row_start + '(.)', first_row[0]).group(1))) # get the symbol after the header row start as delimiter
-                                file.close()
-                                return self.correct_formats() # check for the other formats
                         raise Exception('format corrupted, try another delimiter')
                 else:
                     format_row = ['Format:', self.save_date_format, self.save_time_format, self.save_time_format]
@@ -72,13 +64,6 @@ class time_log():
                             if row[2] == row[3] and row[2] in self.time_formats:
                                 self.save_time_format = row[2]
                                 self.change_time_format(format_row[2])
-                        elif row != self.head_rows[self.language]:
-                            new_language = self.language
-                            for language in self.languages:
-                                if row == self.head_rows[language]:
-                                    self.language = language
-                                    self.change_language(new_language)
-                                    break
         except Exception as e:
             print(f"An error occurred: {e}")
 
@@ -87,7 +72,7 @@ class time_log():
             if len(self.csv_file) == 0:
                 format_row = ['Format:', self.save_date_format, self.save_time_format, self.save_time_format]
                 self.csv_file.append(format_row)
-                self.csv_file.append(self.head_rows[self.language])
+                self.csv_file.append(self.custom_headers)
             if not path.exists(self.csv_file_name):
                 with open(self.csv_file_name, mode='w', newline='') as file:
                     writer = csv.writer(file, delimiter=self.csv_delimiter)
@@ -109,17 +94,19 @@ class time_log():
         except Exception as e:
             print(f"An error occurred: {e}")
     
-    def change_eveything(self, file_name, language, delimiter, date_format, time_format):
+    def change_eveything(self, file_name, delimiter, date_format, time_format, custom_columns, custom_headers):
         if self.csv_file_name != file_name:
             self.change_csv_file_name(file_name)
-        if self.language != language:
-            self.change_language(language)
         if self.csv_delimiter != delimiter:
             self.change_csv_delimiter(delimiter)
         if self.save_date_format != date_format:
             self.change_date_format(date_format)
         if self.save_time_format != time_format:
             self.change_time_format(time_format)
+        if self.custom_columns != custom_columns:
+            self.custom_columns = custom_columns
+        if self.custom_headers != custom_headers:
+            self.custom_headers = custom_headers
 
     def change_csv_file_name(self, file_name):
         if file_name == '': # empty string means no change
@@ -137,16 +124,6 @@ class time_log():
         if self.csv_delimiter == delimiter:
             return
         self.csv_delimiter = delimiter
-        self.write_csv()
-
-    def change_language(self, language):
-        if self.language == language:
-            return
-        old_language = self.language
-        self.language = language
-        for i, row in enumerate(self.csv_file):
-            if row == self.head_rows[old_language]:
-                self.csv_file[i] = self.head_rows[language]
         self.write_csv()
     
     def change_date_format(self, date_format):
@@ -241,10 +218,9 @@ class time_log():
 
 class settings_window():
     time_log_delimiters = [',', ';']
-    time_log_languages = ['en', 'de']
-    time_log_head_rows = {'de': ['KW', 'Datum', 'Start Zeit', 'End Zeit'], 'en': ['CW', 'Date', 'Start Time', 'End Time']}
     time_log_date_formats = ['%Y-%m-%d', '%Y.%m.%d', '%d.%m.%Y', '%m.%d.%Y']
     time_log_time_formats = ['%H:%M:%S', '%H:%M', '%H']
+    custom_columns_options = ['calendar week', 'date', 'start time', 'end time', 'time this day', 'time this week', 'time this month']
     def __init__(self, parent):
         self.parent = parent
         self.fonts = tkfont.families()
@@ -265,10 +241,6 @@ class settings_window():
         self.time_log_delimiter_label.pack()
         self.time_log_delimiter_combobox = ttk.Combobox(self.time_log_frame, values=self.time_log_delimiters)
         self.time_log_delimiter_combobox.pack()
-        self.time_log_language_label = tk.Label(self.time_log_frame, text='Language:')
-        self.time_log_language_label.pack()
-        self.time_log_language_combobox = ttk.Combobox(self.time_log_frame, values=self.time_log_languages)
-        self.time_log_language_combobox.pack()
         self.time_log_date_format_label = tk.Label(self.time_log_frame, text='Date Format:')
         self.time_log_date_format_label.pack()
         self.time_log_date_format_combobox = ttk.Combobox(self.time_log_frame, values=self.time_log_date_formats)
@@ -280,29 +252,73 @@ class settings_window():
         self.time_log_save_button = tk.Button(self.time_log_frame, text='Save', command=lambda: self.save_time_log_settings())
         self.time_log_save_button.pack()
         
+        self.custom_columns_label = tk.Label(self.time_log_frame, text='Custom Columns:')
+        self.custom_columns_label.pack()
+        self.custom_columns_listbox = tk.Listbox(self.time_log_frame, selectmode=tk.MULTIPLE)
+        for option in self.custom_columns_options:
+            self.custom_columns_listbox.insert(tk.END, option)
+        self.custom_columns_listbox.pack()
+        
+        self.add_column_button = tk.Button(self.time_log_frame, text='Add New Column', command=self.add_new_column)
+        self.add_column_button.pack()
+        
+        self.custom_headers_label = tk.Label(self.time_log_frame, text='Custom Headers:')
+        self.custom_headers_label.pack()
+        self.custom_headers_entry = tk.Entry(self.time_log_frame)
+        self.custom_headers_entry.pack()
+
         self.settings_frame.pack()
         self.show_settings()
 
     def show_settings(self):
         self.time_log_file_name_entry.insert(0, self.parent.settings['time_log_file_name'])
         self.time_log_delimiter_combobox.set(self.parent.settings['time_log_delimiter'])
-        self.time_log_language_combobox.set(self.parent.settings['time_log_language'])
         self.time_log_date_format_combobox.set(self.parent.settings['time_log_date_format'])
         self.time_log_time_format_combobox.set(self.parent.settings['time_log_time_format'])
+        for column in self.parent.settings.get('custom_columns', []):
+            index = self.custom_columns_options.index(column)
+            self.custom_columns_listbox.select_set(index)
+        self.custom_headers_entry.insert(0, ','.join(self.parent.settings.get('custom_headers', [])))
 
     def save_time_log_settings(self):
         self.parent.settings['time_log_file_name'] = self.time_log_file_name_entry.get()
         self.parent.settings['time_log_delimiter'] = self.time_log_delimiter_combobox.get()
-        self.parent.settings['time_log_language'] = self.time_log_language_combobox.get()
         self.parent.settings['time_log_date_format'] = self.time_log_date_format_combobox.get()
         self.parent.settings['time_log_time_format'] = self.time_log_time_format_combobox.get()
+        self.parent.settings['custom_columns'] = [self.custom_columns_listbox.get(i) for i in self.custom_columns_listbox.curselection()]
+        self.parent.settings['custom_headers'] = self.custom_headers_entry.get().split(',')
         self.write_settings()
-        self.parent.time_log.change_everything(self.parent.settings['time_log_file_name'], self.parent.settings['time_log_delimiter'], self.parent.settings['time_log_language'], self.parent.settings['time_log_date_format'], self.parent.settings['time_log_time_format'])
+        self.parent.time_log.change_everything(self.parent.settings['time_log_file_name'], self.parent.settings['time_log_delimiter'], self.parent.settings['time_log_date_format'], self.parent.settings['time_log_time_format'], self.parent.settings['custom_columns'], self.parent.settings['custom_headers'])
         self.settings_window.destroy()
         self.write_settings()
 
+    def add_new_column(self):
+        new_column_window = tk.Toplevel(self.settings_window)
+        new_column_window.title('Add New Column')
+        new_column_window.geometry('300x200')
+        
+        new_column_label = tk.Label(new_column_window, text='Column Name:')
+        new_column_label.pack()
+        new_column_entry = tk.Entry(new_column_window)
+        new_column_entry.pack()
+        
+        new_header_label = tk.Label(new_column_window, text='Header:')
+        new_header_label.pack()
+        new_header_entry = tk.Entry(new_column_window)
+        new_header_entry.pack()
+        
+        def save_new_column():
+            column_name = new_column_entry.get()
+            header = new_header_entry.get()
+            if column_name and header:
+                self.custom_columns_options.append(column_name)
+                self.custom_columns_listbox.insert(tk.END, column_name)
+                self.parent.settings['custom_headers'].append(header)
+                new_column_window.destroy()
+        
+        save_button = tk.Button(new_column_window, text='Save', command=save_new_column)
+        save_button.pack()
 
-    
     def write_settings(self):
         try:
             settings_file = open('settings.yml', 'w')
@@ -311,14 +327,12 @@ class settings_window():
         except Exception as e:
             print(f"An error occurred: {e}")
 
-
-
 class widget(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.settings = {}
         self.read_settings()
-        self.time_log = time_log(self, file_name='time_log.csv', delimiter=';', language='de', date_format='%Y.%m.%d', time_format='%H:%M')
+        self.time_log = time_log(self, file_name=self.settings['time_log_file_name'], delimiter=self.settings['time_log_delimiter'], date_format=self.settings['time_log_date_format'], time_format=self.settings['time_log_time_format'], custom_columns=self.settings.get('custom_columns', []), custom_headers=self.settings.get('custom_headers', []))
         self.overrideredirect(True)
         self.geometry('+0+0')
         self.label = tk.Label(self, font=('Helvetica', 48), bg='black', fg='white')
@@ -338,7 +352,7 @@ class widget(tk.Tk):
                 self.settings = yaml.safe_load(settings_file)
                 settings_file.close()
             else:
-                self.settings = {'time_log_file_name': 'time_log.csv', 'time_log_delimiter': ';', 'time_log_language': 'de', 'time_log_date_format': '%Y.%m.%d', 'time_log_time_format': '%H:%M'}
+                self.settings = {'time_log_file_name': 'time_log.csv', 'time_log_delimiter': ';', 'time_log_date_format': '%Y.%m.%d', 'time_log_time_format': '%H:%M'}
         except Exception as e:
             print(f"An error occurred: {e}")
     

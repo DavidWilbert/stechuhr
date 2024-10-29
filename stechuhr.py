@@ -16,7 +16,7 @@ class time_log():
         self.save_date_format = date_format
         self.save_time_format = time_format
         self.custom_columns = custom_columns if custom_columns else []
-        self.custom_headers = custom_headers if custom_headers else []
+        self.custom_headers = custom_headers if custom_headers else ['CW', 'Date', 'Start Time', 'End Time']
         self.start_time = datetime.now()
         self.read_csv_file()
     

@@ -36,8 +36,10 @@ class time_log():
                 self.correct_formats()
         except FileNotFoundError:
             self.write_csv_header()
+        except (IOError, csv.Error) as e:
+            print(f"File handling error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
     
     def correct_formats(self):
         try:
@@ -62,7 +64,7 @@ class time_log():
                                     self.csv_file = list(csv.reader(file, delimiter = re.search(r'^' + head_row_start + '(.)', first_row[0]).group(1))) # get the symbol after the header row start as delimiter
                                 file.close()
                                 return self.correct_formats() # check for the other formats
-                        raise Exception('format corrupted, try another delimiter')
+                        raise ValueError('format corrupted, try another delimiter')
                 else:
                     format_row = ['Format:', self.save_date_format, self.save_time_format, self.save_time_format]
                     for row in self.csv_file:
@@ -80,8 +82,14 @@ class time_log():
                                     self.language = language
                                     self.change_language(new_language)
                                     break
+        except (IOError, csv.Error) as e:
+            print(f"File handling error: {e}")
+        except re.error as e:
+            print(f"Regex error: {e}")
+        except ValueError as e:
+            print(f"Value error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
 
     def write_csv_header(self):
         try:
@@ -94,8 +102,10 @@ class time_log():
                     writer = csv.writer(file, delimiter=self.csv_delimiter)
                     writer.writerows(self.csv_file)
                 file.close()
+        except (IOError, csv.Error) as e:
+            print(f"File handling error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
     
     def write_csv(self):
         try:
@@ -107,8 +117,10 @@ class time_log():
             file.close()
         except FileNotFoundError:
             self.write_csv_header()
+        except (IOError, csv.Error) as e:
+            print(f"File handling error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
     
     def change_everything(self, file_name, language, delimiter, date_format, time_format, custom_columns, custom_headers):
         if self.csv_file_name != file_name:
@@ -128,13 +140,13 @@ class time_log():
 
     def change_csv_file_name(self, file_name):
         if file_name == '': # empty string means no change
-            raise Exception('file name cannot be empty')
+            raise ValueError('file name cannot be empty')
         if not re.match(r'.*\.csv$', file_name): # if file_name does not end with .csv, add it
             file_name += '.csv'
         if self.csv_file_name == file_name:
             return
         if path.exists(file_name):
-            raise Exception('file already exists')
+            raise ValueError('file already exists')
         self.csv_file_name = file_name
         self.write_csv()
 
@@ -335,11 +347,12 @@ class settings_window():
     
     def write_settings(self):
         try:
-            settings_file = open('settings.yml', 'w')
-            yaml.dump(self.parent.settings, settings_file)
-            settings_file.close()
+            with open('settings.yml', 'w') as settings_file:
+                yaml.dump(self.parent.settings, settings_file)
+        except (IOError, yaml.YAMLError) as e:
+            print(f"File handling error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
 
 
 
@@ -364,13 +377,14 @@ class widget(tk.Tk):
     def read_settings(self):
         try:
             if path.exists('settings.yml'):
-                settings_file = open('settings.yml', 'r')
-                self.settings = yaml.safe_load(settings_file)
-                settings_file.close()
+                with open('settings.yml', 'r') as settings_file:
+                    self.settings = yaml.safe_load(settings_file)
             else:
                 self.settings = {'time_log_file_name': 'time_log.csv', 'time_log_delimiter': ';', 'time_log_language': 'de', 'time_log_date_format': '%Y.%m.%d', 'time_log_time_format': '%H:%M', 'time_log_custom_columns': ['CW', 'Date', 'Start Time', 'End Time'], 'time_log_custom_headers': {'de': ['KW', 'Datum', 'Start Zeit', 'End Zeit'], 'en': ['CW', 'Date', 'Start Time', 'End Time']}}
+        except (IOError, yaml.YAMLError) as e:
+            print(f"File handling error: {e}")
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"An unexpected error occurred: {e}")
     
     def show_context_menu(self, event):
         context_menu = tk.Menu(self, tearoff=0)
